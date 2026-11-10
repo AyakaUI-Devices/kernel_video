@@ -3021,7 +3021,8 @@ static int __init_regs_and_interrupts(struct venus_hfi_device *device,
 	rc = request_irq(res->irq, venus_hfi_isr, IRQF_TRIGGER_HIGH,
 			"msm_vidc", device);
 	if (unlikely(rc)) {
-		d_vpr_e("%s: request_irq failed\n", __func__);
+		d_vpr_e("%s: request_irq %u failed: %d\n",
+			__func__, res->irq, rc);
 		goto error_irq_fail;
 	}
 

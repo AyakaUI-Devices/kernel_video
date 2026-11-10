@@ -896,8 +896,11 @@ int read_platform_resources_from_dt(
 	res->register_base = kres ? kres->start : -1;
 	res->register_size = kres ? (kres->end + 1 - kres->start) : -1;
 
-	kres = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	res->irq = kres ? kres->start : -1;
+	/* OF platform IRQs are resolved through the IRQ domain on 6.1. */
+	rc = platform_get_irq(pdev, 0);
+	if (rc < 0)
+		return dev_err_probe(&pdev->dev, rc, "failed to resolve video IRQ\n");
+	res->irq = rc;
 
 	rc = msm_vidc_load_fw_name(res);
 	if (rc)
