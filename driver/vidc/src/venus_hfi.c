@@ -2397,6 +2397,7 @@ static int __load_fw_to_memory(struct platform_device *pdev,
 	phys_addr_t phys = 0;
 	size_t res_size = 0;
 	ssize_t fw_size = 0;
+	size_t fw_name_len;
 	void *virt = NULL;
 	int pas_id = 0;
 
@@ -2404,11 +2405,16 @@ static int __load_fw_to_memory(struct platform_device *pdev,
 		d_vpr_e("%s: Invalid inputs\n", __func__);
 		return -EINVAL;
 	}
-	if (strlen(fw_name) >= MAX_FIRMWARE_NAME_SIZE - 4) {
+	fw_name_len = strlen(fw_name);
+	if (fw_name_len >= MAX_FIRMWARE_NAME_SIZE - 4) {
 		d_vpr_e("%s: Invalid fw name\n", __func__);
 		return -EINVAL;
 	}
-	scnprintf(firmware_name, ARRAY_SIZE(firmware_name), "%s.mbn", fw_name);
+	/* Explicit MDT names use the OEM-signed split firmware from modem. */
+	if (fw_name_len >= 4 && !strcmp(fw_name + fw_name_len - 4, ".mdt"))
+		strscpy(firmware_name, fw_name, sizeof(firmware_name));
+	else
+		scnprintf(firmware_name, ARRAY_SIZE(firmware_name), "%s.mbn", fw_name);
 
 	rc = of_property_read_u32(pdev->dev.of_node, "pas-id", &pas_id);
 	if (rc) {
