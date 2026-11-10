@@ -73,6 +73,7 @@ static int venus_hfi_noc_error_info(void *dev);
 static int __set_ubwc_config(struct venus_hfi_device *device);
 static bool __watchdog_common(u32 intr_status);
 static void __noc_error_info_common(struct venus_hfi_device *device);
+static int __power_on_ar50_lt(struct venus_hfi_device *device);
 
 struct venus_hfi_vpu_ops ar50_lite_ops = {
         .interrupt_init = __interrupt_init_ar50_lt,
@@ -80,7 +81,7 @@ struct venus_hfi_vpu_ops ar50_lite_ops = {
         .clock_config_on_enable = NULL,
         .reset_ahb2axi_bridge = NULL,
         .power_off = __power_off_ar50_lt,
-        .power_on = NULL,
+        .power_on = __power_on_ar50_lt,
         .prepare_pc = __prepare_pc_ar50_lt,
         .raise_interrupt = __raise_interrupt_ar50_lt,
         .watchdog = __watchdog_common,
@@ -3815,6 +3816,78 @@ static int __set_ubwc_config(struct venus_hfi_device *device)
 	d_vpr_h("Configured UBWC Config to Venus\n");
 
 fail_to_set_ubwc_config:
+	return rc;
+}
+
+/* Holi uses the generic power sequence from the stock VIDEO.VE.6.0 driver. */
+static int __power_on_ar50_lt(struct venus_hfi_device *device)
+{
+	struct regulator_info *rinfo;
+	struct clock_info *cl;
+	u32 sid = DEFAULT_SID;
+	int rc, i, regulators_enabled = 0, clocks_enabled = 0;
+	long rate;
+
+	if (device->power_enabled)
+		return 0;
+
+	rc = __vote_buses(device, INT_MAX, INT_MAX, sid);
+	if (rc) {
+		d_vpr_e("%s: bus vote failed: %d\n", __func__, rc);
+		goto fail_buses;
+	}
+
+	venus_hfi_for_each_regulator(device, rinfo) {
+		rc = regulator_enable(rinfo->regulator);
+		if (rc) {
+			d_vpr_e("%s: regulator %s failed: %d\n",
+				__func__, rinfo->name, rc);
+			goto fail_resources;
+		}
+		regulators_enabled++;
+	}
+
+	venus_hfi_for_each_clock(device, cl) {
+		if (cl->has_scaling) {
+			rate = clk_round_rate(cl->clk, 0);
+			if (rate < 0) {
+				rc = rate;
+				goto fail_resources;
+			}
+			rc = __set_clk_rate(device, cl, rate, sid);
+			if (rc)
+				goto fail_resources;
+		}
+		rc = clk_prepare_enable(cl->clk);
+		if (rc) {
+			d_vpr_e("%s: clock %s failed: %d\n",
+				__func__, cl->name, rc);
+			goto fail_resources;
+		}
+		clocks_enabled++;
+	}
+
+	/* No video register or PAS access is safe before both domains are on. */
+	device->power_enabled = true;
+	rc = __scale_clocks(device, sid);
+	if (rc)
+		d_vpr_e("%s: keeping initial clock rates: %d\n", __func__, rc);
+
+	__set_registers(device, sid);
+	call_venus_op(device, interrupt_init, device, sid);
+	device->intr_status = 0;
+	enable_irq(device->hal_data->irq);
+	return 0;
+
+fail_resources:
+	for (i = clocks_enabled - 1; i >= 0; i--)
+		clk_disable_unprepare(device->res->clock_set.clock_tbl[i].clk);
+	for (i = regulators_enabled - 1; i >= 0; i--)
+		__disable_regulator(&device->res->regulator_set.regulator_tbl[i],
+			device);
+fail_buses:
+	__unvote_buses(device, sid);
+	device->power_enabled = false;
 	return rc;
 }
 
