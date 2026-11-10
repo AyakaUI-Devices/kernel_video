@@ -1,3 +1,7 @@
+# Blair stock VIDEO.VE.6.0 firmware uses the legacy HFI packet ABI.
+ifeq ($(CONFIG_ARCH_BLAIR),y)
+include $(VIDEO_ROOT)/legacy/Kbuild
+else
 # SPDX-License-Identifier: GPL-2.0-only
 
 ifneq ($(CONFIG_ARCH_MONACO), y)
@@ -140,3 +144,5 @@ msm_video-objs += driver/vidc/src/msm_vidc_v4l2.o \
                   driver/vidc/src/hfi_packet.o \
                   driver/vidc/src/venus_hfi_response.o \
                   driver/platform/common/src/msm_vidc_platform.o
+
+endif # CONFIG_ARCH_BLAIR

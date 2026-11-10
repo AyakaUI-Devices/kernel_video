@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+ifeq ($(CONFIG_ARCH_BLAIR), y)
+include $(VIDEO_ROOT)/legacy/config/holivid.conf
+LINUXINCLUDE    += -include $(VIDEO_ROOT)/legacy/config/holividconf.h \
+                   -I$(VIDEO_ROOT)/legacy/msm/vidc
+endif
+
+LINUXINCLUDE    += -I$(VIDEO_ROOT)/legacy/include -I$(VIDEO_ROOT)/legacy/include/uapi
+
+USERINCLUDE     += -I$(VIDEO_ROOT)/legacy/include/uapi
+
+obj-m += msm_video.o
+
+msm_video-objs += legacy/msm/vidc/msm_v4l2_vidc.o \
+                  legacy/msm/vidc/msm_vidc_platform.o \
+                  legacy/msm/vidc/msm_vidc_common.o \
+                  legacy/msm/vidc/msm_vidc.o \
+                  legacy/msm/vidc/msm_vdec.o \
+                  legacy/msm/vidc/msm_venc.o \
+                  legacy/msm/vidc/msm_smem.o \
+                  legacy/msm/vidc/msm_vidc_debug.o \
+                  legacy/msm/vidc/msm_vidc_res_parse.o \
+                  legacy/msm/vidc/hfi_common.o \
+                  legacy/msm/vidc/hfi_ar50_lt.o \
+                  legacy/msm/vidc/hfi_ar50.o \
+                  legacy/msm/vidc/hfi_iris2.o \
+                  legacy/msm/vidc/hfi_response_handler.o \
+                  legacy/msm/vidc/hfi_packetization.o \
+                  legacy/msm/vidc/vidc_hfi.o \
+                  legacy/msm/vidc/msm_vidc_clocks.o \
+                  legacy/msm/vidc/msm_vidc_bus_ar50lite.o\
+                  legacy/msm/vidc/msm_vidc_bus_ar50.o \
+                  legacy/msm/vidc/msm_vidc_bus_iris2.o \
+                  legacy/msm/vidc/msm_vidc_buffer_calculations.o
