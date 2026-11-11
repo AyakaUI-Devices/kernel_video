@@ -267,6 +267,15 @@ int __boot_firmware_ar50_lt(struct venus_hfi_device *device, u32 sid)
 
 	if (count >= max_tries) {
 		s_vpr_e(sid, "Error booting up vidc firmware\n");
+		s_vpr_e(sid, "AR50 Lite boot: status %#x, queue %#x, size %#x, SFR %#x\n",
+			ctrl_status,
+			(u32)device->iface_q_table.align_device_addr,
+			(u32)SHARED_QSIZE, (u32)device->sfr.align_device_addr);
+		s_vpr_e(sid, "AR50 Lite registers: queue %#x info %#x region %#x size %#x\n",
+			__read_register(device, VIDC_QTBL_ADDR_AR50_LT, sid),
+			__read_register(device, VIDC_QTBL_INFO_AR50_LT, sid),
+			__read_register(device, VIDC_UC_REGION_ADDR_AR50_LT, sid),
+			__read_register(device, VIDC_UC_REGION_SIZE_AR50_LT, sid));
 		rc = -ETIME;
 	}
 

@@ -4080,6 +4080,8 @@ static int __load_fw_to_memory(struct platform_device *pdev,
 	}
 
 	/* prevent system suspend during fw_load */
+	dev_info(&pdev->dev, "Loading %s at %pa, region size %#zx\n",
+		firmware_name, &phys, res_size);
 	pm_stay_awake(pdev->dev.parent);
 	rc = qcom_mdt_load(&pdev->dev, firmware, firmware_name,
 		pas_id, virt, phys, res_size, NULL);
@@ -4098,6 +4100,8 @@ static int __load_fw_to_memory(struct platform_device *pdev,
 
 	memunmap(virt);
 	release_firmware(firmware);
+	dev_info(&pdev->dev, "Firmware %s authenticated and reset (PAS %d)\n",
+		firmware_name, pas_id);
 	d_vpr_h("%s: firmware \"%s\" loaded successfully\n",
 					__func__, firmware_name);
 

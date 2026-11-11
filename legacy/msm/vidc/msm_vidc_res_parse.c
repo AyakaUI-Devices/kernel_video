@@ -5,6 +5,7 @@
 
 #include <linux/iommu.h>
 #include <linux/of.h>
+#include <linux/qcom-iommu-util.h>
 #include <linux/sort.h>
 #include "msm_vidc_debug.h"
 #include "msm_vidc_resources.h"
@@ -1037,6 +1038,9 @@ int msm_vidc_smmu_fault_handler(struct iommu_domain *domain,
 		struct device *dev, unsigned long iova, int flags, void *token)
 {
 	struct msm_vidc_core *core = token;
+	struct qcom_iommu_fault_ids ids = { 0 };
+	struct context_bank_info *cb;
+	int rc;
 
 	if (!domain || !core) {
 		d_vpr_e("%s: invalid params %pK %pK\n",
@@ -1053,17 +1057,28 @@ int msm_vidc_smmu_fault_handler(struct iommu_domain *domain,
 		}
 	}
 
-	d_vpr_e("%s: faulting address: %lx\n", __func__, iova);
+	d_vpr_e("%s: faulting address: %lx flags: %#x context bank: %d\n",
+		__func__, iova, flags, qcom_iommu_get_context_bank_nr(domain));
+	rc = qcom_iommu_get_fault_ids(domain, &ids);
+	if (!rc)
+		d_vpr_e("SMMU fault IDs: BID %#x PID %#x MID %#x\n",
+			ids.bid, ids.pid, ids.mid);
+	mutex_lock(&core->resources.cb_lock);
+	list_for_each_entry(cb, &core->resources.context_banks, list) {
+		if (cb->domain == domain)
+			d_vpr_e("SMMU fault context: %s secure: %d range: %#x + %#x\n",
+				cb->name, cb->is_secure, cb->addr_range.start,
+				cb->addr_range.size);
+	}
+	mutex_unlock(&core->resources.cb_lock);
 
 	core->smmu_fault_handled = true;
 	msm_comm_print_insts_info(core);
 	/*
-	 * Return -EINVAL to elicit the default behaviour of smmu driver.
-	 * If we return -EINVAL, then smmu driver assumes page fault handler
-	 * is not installed and prints a list of useful debug information like
-	 * FAR, SID etc. This information is not printed if we return 0.
+	 * The 6.1 SMMU driver prints FAR/SID and fault registers only for
+	 * -ENOSYS. The old -EINVAL return suppressed that diagnostic report.
 	 */
-	return -EINVAL;
+	return -ENOSYS;
 }
 
 static int msm_vidc_populate_context_bank(struct device *dev,
